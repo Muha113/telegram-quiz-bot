@@ -38,7 +38,7 @@ def switch_game_status():
 
 
 def is_registered(chat_id):
-    return False if users.find_one({'id': chat_id}) is not None else True
+    return False if users.find_one({AvailableFields.ID: chat_id}) is not None else True
 
 
 def is_still_reg(chat_id):
@@ -63,17 +63,17 @@ def add_user_info(message):
         users.insert_one(data).inserted_id
 
 
-def update_db(chat_id, field, value):
-    users.update_one({'id': chat_id}, {'$set': {field: value}}, upsert=False)
+def update_db(chat_id, diction):
+    users.update_one({AvailableFields.ID: chat_id}, {'$set': diction}, upsert=False)
 
 
 def get_field_value(chat_id, field):
-    res = users.find_one({'id': chat_id})
+    res = users.find_one({AvailableFields.ID: chat_id})
     return res[field]
 
 
 def get_question(db, number):
-    res = db.find_one({'id': number})
+    res = db.find_one({AvailableFields.ID: number})
     return res
 
 
@@ -82,4 +82,4 @@ def get_users():
 
 
 def get_user(chat_id):
-    return users.find_one({'id': chat_id})
+    return users.find_one({AvailableFields.ID: chat_id})

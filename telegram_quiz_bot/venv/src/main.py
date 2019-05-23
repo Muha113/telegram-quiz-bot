@@ -65,8 +65,8 @@ def messages(message: Message):
                 bot.send_message(message.chat.id, 'По-моему вы врете, напишите еще раз')
             else:
                 bot.send_message(message.chat.id, 'Отлично\nВы окончательно зарегистрировались\nОжидайте игры =)')
-                mongodb.update_db(message.chat.id, mongodb.AvailableFields.AGE, to_int)
-                mongodb.update_db(message.chat.id, mongodb.AvailableFields.STATUS_REG, False)
+                to_update = {mongodb.AvailableFields.AGE: to_int, mongodb.AvailableFields.STATUS_REG: False}
+                mongodb.update_db(message.chat.id, to_update)
         except:
             bot.send_message(message.chat.id, 'Я же просил возраст.\nЕще разок')
     elif mongodb.game_status():
@@ -78,16 +78,15 @@ def messages(message: Message):
             else:
                 quiz.check_ans(message.chat.id, current_qst_number, message.text)
                 bot.send_message(message.chat.id, quiz.get_next_question(current_qst_number + 1))
-                mongodb.update_db(message.chat.id, mongodb.AvailableFields.QST_COUNT, current_qst_number + 1)
+                mongodb.update_db(message.chat.id, {mongodb.AvailableFields.QST_COUNT: current_qst_number + 1})
         else:
             if message.text == '!quiz':
-                mongodb.update_db(message.chat.id, mongodb.AvailableFields.STATUS_INGAME, True)
+                mongodb.update_db(message.chat.id, {mongodb.AvailableFields.STATUS_INGAME: True})
                 bot.send_message(message.chat.id, 'Ну что, поехали!')
                 bot.send_message(message.chat.id, quiz.get_next_question(1))
             else:
-                bot.send_message(message.chat.id, 'Идет игра, но похоже вы не учавствуете в ней\n' + \
-                                 'Что же, вне игры принимаются только команды\n' + \
-                                 'Введите !quiz чтобы начать игру')
+                bot.send_message(message.chat.id,
+                                 'Идет игра, но похоже вы не учавствуете в ней\nЧто же, вне игры принимаются только команды\nВведите !quiz чтобы начать игру')
     else:
         bot.send_message(message.chat.id, 'Вне игры принимаются только команды')
 
