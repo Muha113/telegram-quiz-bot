@@ -9,6 +9,7 @@ import quiz
 import game_config
 import time
 import commands
+import mess_controller
 from multiprocessing import Process
 from telebot.types import Message
 
@@ -23,7 +24,7 @@ def schedule_polling():
 
 schedule.every().day.at(game_config.game_starts).do(quiz.start_quiz)
 schedule.every().day.at(game_config.game_finish).do(quiz.finish_quiz)
-schedule.every().day.at(game_config.game_alarm).do(commands.on_time_to)
+schedule.every().day.at(game_config.game_alarm).do(commands.on_game_alarm)
 p = Process(target=schedule_polling)
 p.start()
 
@@ -48,45 +49,37 @@ def commands_handler_help(message):
     bot.send_message(message.chat.id, commands.on_top())
 
 
+@bot.message_handler(commands=['tickets'])
+def commands_handler_help(message):
+    bot.send_message(message.chat.id, 'Ваши тикеты: ' + str(commands.tickets(message.chat.id)))
+
+
+@bot.message_handler(commands=['reset_stat'])
+def commands_handler_help(message):
+    if commands.reset_stat(message.chat.id):
+        bot.send_message(message.chat.id, 'Статистика успешно обнулена')
+    else:
+        bot.send_message(message.chat.id, 'Недостаточно тикетов')
+
+
 @bot.message_handler(commands=['start'])
 def commands_handler_start(message):
     mongodb.add_user_info(message)
     bot.send_message(message.chat.id, commands.on_start())
-    if mongodb.is_still_reg(message.chat.id):
+    if mongodb.get_state(message.chat.id) == mongodb.AvailableStates.IN_REG:
         bot.send_message(message.chat.id, 'Сколько вам лет?')
 
 
 @bot.message_handler(func=lambda m: True)
 def messages(message: Message):
-    if mongodb.is_still_reg(message.chat.id):
-        try:
-            to_int = int(message.text)
-            if to_int > 100 or to_int < 0:
-                bot.send_message(message.chat.id, 'По-моему вы врете, напишите еще раз')
-            else:
-                bot.send_message(message.chat.id, 'Отлично\nВы окончательно зарегистрировались\nОжидайте игры =)')
-                to_update = {mongodb.AvailableFields.AGE: to_int, mongodb.AvailableFields.STATUS_REG: False}
-                mongodb.update_db(message.chat.id, to_update)
-        except:
-            bot.send_message(message.chat.id, 'Я же просил возраст.\nЕще разок')
+    state = mongodb.get_state(message.chat.id)
+    if state == mongodb.AvailableStates.IN_REG:
+        mess_controller.reg(message, bot)
     elif mongodb.game_status():
-        if mongodb.get_field_value(message.chat.id, mongodb.AvailableFields.STATUS_INGAME):
-            current_qst_number = mongodb.get_field_value(message.chat.id, mongodb.AvailableFields.QST_COUNT)
-            if current_qst_number == game_config.qst_amount:
-                quiz.check_ans(message.chat.id, current_qst_number, message.text)
-                bot.send_message(message.chat.id, 'Вы ответили на все вопросы\nОжидайте конца игры')
-            else:
-                quiz.check_ans(message.chat.id, current_qst_number, message.text)
-                bot.send_message(message.chat.id, quiz.get_next_question(current_qst_number + 1))
-                mongodb.update_db(message.chat.id, {mongodb.AvailableFields.QST_COUNT: current_qst_number + 1})
+        if state == mongodb.AvailableStates.IN_GAME:
+            mess_controller.already_in_game(message, bot)
         else:
-            if message.text == '!quiz':
-                mongodb.update_db(message.chat.id, {mongodb.AvailableFields.STATUS_INGAME: True})
-                bot.send_message(message.chat.id, 'Ну что, поехали!')
-                bot.send_message(message.chat.id, quiz.get_next_question(1))
-            else:
-                bot.send_message(message.chat.id,
-                                 'Идет игра, но похоже вы не учавствуете в ней\nЧто же, вне игры принимаются только команды\nВведите !quiz чтобы начать игру')
+            mess_controller.not_in_game_yet(message, bot)
     else:
         bot.send_message(message.chat.id, 'Вне игры принимаются только команды')
 

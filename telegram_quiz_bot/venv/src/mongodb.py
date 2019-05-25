@@ -21,9 +21,15 @@ class AvailableFields:
     GLOBAL_RANK = 'global_rank'
     AVERAGE = 'average'
     TOTAL_GAMES = 'total_games'
-    STATUS_REG = 'status_reg'
-    STATUS_INGAME = 'status_ingame'
+    STATE = 'state'
     AGE = 'age'
+    TICKETS = 'tickets'
+
+
+class AvailableStates:
+    IN_GAME = 'in_game'
+    IN_REG = 'in_reg'
+    AFK = 'afk'
 
 
 def game_status():
@@ -41,9 +47,8 @@ def is_registered(chat_id):
     return False if users.find_one({AvailableFields.ID: chat_id}) is not None else True
 
 
-def is_still_reg(chat_id):
-    age = get_field_value(chat_id, AvailableFields.AGE)
-    return True if age == -1 else False
+def get_state(chat_id):
+    return get_field_value(chat_id, AvailableFields.STATE)
 
 
 def add_user_info(message):
@@ -57,9 +62,9 @@ def add_user_info(message):
                 AvailableFields.GLOBAL_RANK: 0,
                 AvailableFields.AVERAGE: 0,
                 AvailableFields.TOTAL_GAMES: 0,
-                AvailableFields.STATUS_REG: True,
-                AvailableFields.STATUS_INGAME: False,
-                AvailableFields.AGE: -1}
+                AvailableFields.STATE: AvailableStates.IN_REG,
+                AvailableFields.AGE: -1,
+                AvailableFields.TICKETS: 0}
         users.insert_one(data).inserted_id
 
 

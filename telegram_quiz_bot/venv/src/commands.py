@@ -1,5 +1,7 @@
 import game_config
 import mongodb
+import telebot
+import config
 from datetime import datetime, timedelta
 
 
@@ -23,6 +25,13 @@ def on_start():
     return res_str
 
 
+def on_game_alarm():
+    bot = telebot.TeleBot(config.TOKEN)
+    users = mongodb.get_users()
+    for x in users:
+        bot.send_message(x[mongodb.AvailableFields.ID], on_time_to())
+
+
 def on_time_to():
     temp = str(datetime.now().time())
     temp = temp.split('.')
@@ -33,6 +42,24 @@ def on_time_to():
     if delta.days < 0:
         delta = timedelta(days=0, seconds=delta.seconds, microseconds=delta.microseconds)
     return 'До следующей игры осталось\n' + str(delta)
+
+
+def reset_stat(chat_id):
+    tickets_now = mongodb.get_field_value(chat_id, mongodb.AvailableFields.TICKETS)
+    if tickets_now < 100:
+        return False
+    else:
+        to_update = {mongodb.AvailableFields.GLOBAL_RANK: 0,
+                     mongodb.AvailableFields.TOTAL_GAMES: 0,
+                     mongodb.AvailableFields.AVERAGE: 0,
+                     mongodb.AvailableFields.TOTAL_RIGHT_ANSWERS: 0,
+                     mongodb.AvailableFields.TICKETS: tickets_now - 10}
+        mongodb.update_db(chat_id, to_update)
+        return True
+
+
+def tickets(chat_id):
+    return mongodb.get_field_value(chat_id, mongodb.AvailableFields.TICKETS)
 
 
 def on_stat(chat_id):
